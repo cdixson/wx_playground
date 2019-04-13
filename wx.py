@@ -1,27 +1,48 @@
-import json, requests, datetime
+﻿import json, requests, mysql.connector, time
 
-try:
-	r = requests.get("http://api.openweathermap.org/data/2.5/weather?lat=41.865519&lon=-71.491376")
+from datetime import date
+from time import sleep
+from datetime import datetime
 
-	data = r.json()
+#connect to the database
+mydb = mysql.connector.connect(user='{user}', 
+	password='{pwd}',
+	host='{host}',
+	database='{db}')
+             
+while True:                 
 
-	print (r.headers['content-type'])
+	try:
+		r = requests.get("http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon=-{lon}&APPID={ID}")
 
-	tempKelvin = (data['main']['temp'])
+		data = r.json()
 
-	tempCelcius = tempKelvin - 273.15
-	tempFarenheit = (tempCelcius * 1.8000) + 32.00
+		humidity = (data['main']['humidity'])
+		
+		tempKelvin = (data['main']['temp'])
+		tempCelcius = tempKelvin - 273.15
+		tempFarenheit = (tempCelcius * 1.8000) + 32.00
+		tempFarenheit = "{:.1f}".format(tempFarenheit)
+
+		now = datetime.now()
+		print (now.strftime("%Y-%m-%d %H:%M"))
+		print (data['dt']) #timestamp
+		print (tempFarenheit) #temp in F
+		print (humidity) #humidity
 	
-	print(datetime.datetime.fromtimestamp(int(data['dt']))).strftime('%Y-%m-%d %H:%M:%S %Z%z')
+		mycursor = mydb.cursor()
 
-	print (data['name'])
-	print tempFarenheit
+		sql = "INSERT INTO temperature (updated, tempF, humidity) VALUES (%s, %s, %s)"
+		val = (data['dt'], tempFarenheit, humidity)
+		
+		mycursor.execute(sql, val)
+		
+		mydb.commit()
+		
+		print(mycursor.rowcount, "record inserted.")
+		print("---------------------------------")
 
-except requests.exceptions.RequestException as e:    
-    print "cannot connect"
-
-#location
-#temp (increasing or decreasing in last hour, icon up/down)
-#barometric pressure
-#current conditions (icon)
-#alert
+	except requests.exceptions.RequestException as e:    
+		print ('cannot connect')
+    
+	time.sleep(600) #10 min
